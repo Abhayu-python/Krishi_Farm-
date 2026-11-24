@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop - Shiv Krishi Farm</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background:
+        linear-gradient(rgba(20, 83, 45, 0.55), rgba(20, 83, 45, 0.55)),
+        url('https://paulboers.com/wp-content/uploads/2018/09/Coldframe02-768x461.jpg') center / cover fixed,
+        #166534;
+    }
+
+    /* Glass (blurry but clearly visible) product card */
+    .product-card {
+      background: rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .product-card:hover {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+    .product-card h3, .product-card .price { text-shadow: 0 1px 3px rgba(0,0,0,0.45); }
+
+    .emoji-wrap {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    /* Sliding bottom message */
+    #msgBox {
+      position: fixed;
+      left: 50%;
+      bottom: -80px;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: all 0.5s ease;
+      z-index: 60;
+    }
+    #msgBox.show { bottom: 30px; opacity: 1; }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px #22c55e;
+    }
+    #cartBox { display: none; }
+    #cartBox.open { display: block; }
+  </style>
+</head>
+<body class="text-gray-800 pt-20 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-green-700/90 backdrop-blur-md text-white p-4 flex justify-between items-center shadow-lg fixed w-full z-50 top-0">
+    <a href="./index.html" class="flex items-center space-x-3">
+      <img src="./pic/Gemini-logo.png" alt="Farm Logo" class="h-12 w-12 rounded-full shadow-md" onerror="this.style.display='none'">
+      <h1 class="text-xl font-bold tracking-wide">Shiv Krishi Farm</h1>
+    </a>
+    <div class="flex items-center gap-3">
+      <a href="./index.html" class="hidden sm:inline text-sm hover:underline">Home</a>
+      <button onclick="toggleCart()" class="bg-yellow-400 text-black px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 transition-colors shadow-md">
+        🛒 Cart (<span id="cartCount">0</span>)
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="text-center py-16 px-4">
+    <h2 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white drop-shadow-lg">🌱 Welcome to Shiv Krishi Farm</h2>
+    <p class="mt-3 text-lg sm:text-xl text-yellow-200 font-semibold drop-shadow">Fresh Vegetables Direct from Our Fields</p>
+  </header>
+
+  <!-- Products -->
+  <section id="productSection" class="max-w-7xl mx-auto p-4 sm:p-6 grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"></section>
+
+  <!-- Cart -->
+  <div id="cartBox" class="fixed right-2 sm:right-5 top-20 bg-white/95 backdrop-blur-md p-6 shadow-2xl rounded-lg w-72 sm:w-96 max-h-[75vh] overflow-y-auto z-50">
+    <h2 class="text-xl font-bold mb-4">🛒 Your Cart</h2>
+    <ul id="cartItems" class="space-y-2"></ul>
+    <p class="font-bold mt-4">Total: ₹<span id="cartTotal">0</span></p>
+
+    <h4 class="mt-6 text-xl font-bold">Checkout</h4>
+    <form id="checkoutForm" class="mt-3 space-y-3" onsubmit="return false;">
+      <input id="custName" type="text" placeholder="Your Name" class="w-full p-2 border border-gray-300 rounded-lg">
+      <input id="custPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="Phone Number (10 digits)" class="w-full p-2 border border-gray-300 rounded-lg">
+      <textarea id="custAddress" placeholder="Delivery Address" class="w-full p-2 border border-gray-300 rounded-lg"></textarea>
+      <button type="button" onclick="sendToWhatsApp()" class="bg-green-700 text-white px-4 py-2 rounded-lg w-full shadow-md hover:bg-green-600 transition-colors">
+        Proceed via WhatsApp
+      </button>
+    </form>
+  </div>
+
+  <div id="msgBox" class="px-6 py-3 rounded-lg font-bold text-white shadow-lg"></div>
+
+<script>
+/* ---------- 10 vegetables (price per kg in ₹) ---------- */
+const PRODUCTS = [
+  { id: "tomato",    name: "Tomato",       emoji: "🍅", price: 40 },
+  { id: "potato",    name: "Potato",       emoji: "🥔", price: 25 },
+  { id: "onion",     name: "Onion",        emoji: "🧅", price: 35 },
+  { id: "carrot",    name: "Carrot",       emoji: "🥕", price: 50 },
+  { id: "brinjal",   name: "Brinjal",      emoji: "🍆", price: 45 },
+  { id: "chilli",    name: "Green Chilli", emoji: "🌶️", price: 80 },
+  { id: "cucumber",  name: "Cucumber",     emoji: "🥒", price: 30 },
+  { id: "cabbage",   name: "Cabbage",      emoji: "🥬", price: 28 },
+  { id: "spinach",   name: "Spinach",      emoji: "🌿", price: 30 },
+  { id: "corn",      name: "Sweet Corn",   emoji: "🌽", price: 60 }
+];
+const WEIGHTS = [0.5, 1, 2, 3, 5]; // kg options
+
+let cart = [];
+
+/* ---------- Storage ---------- */
+function saveCart() {
+  try { localStorage.setItem("cart", JSON.stringify(cart)); } catch (e) {}
+}
+function loadCart() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("cart"));
+    if (Array.isArray(saved)) {
+      cart = saved.filter(i => i && typeof i.name === "string" && Number(i.price) > 0 && Number(i.qty) > 0);
+    }
+  } catch (e) { cart = []; }
+  updateCartCount();
+}
+
+/* ---------- Message ---------- */
+let msgTimer;
+function showMessage(text, type = "success") {
+  const box = document.getElementById("msgBox");
+  box.innerText = text;
+  box.classList.remove("bg-green-600", "bg-red-500");
+  box.classList.add(type === "error" ? "bg-red-500" : "bg-green-600", "show");
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => box.classList.remove("show"), 3000);
+}
+
+/* ---------- Render product cards ---------- */
+function renderProducts() {
+  const section = document.getElementById("productSection");
+  section.innerHTML = PRODUCTS.map(p => `
+    <div class="product-card rounded-2xl p-5 text-center">
+      <div class="emoji-wrap mx-auto w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-md">${p.emoji}</div>
+      <h3 class="font-extrabold text-xl mt-3 text-white">${p.name}</h3>
+      <p class="price text-yellow-200 font-bold text-lg">₹${p.price} / Kg</p>
+
+      <label class="block text-xs text-white/90 mt-3 mb-1 font-semibold">Select weight</label>
+      <select id="${p.id}Weight" onchange="updatePrice('${p.id}')" class="w-full p-2 rounded-lg border border-white/60 bg-white/80 text-gray-800 font-semibold text-center">
+        ${WEIGHTS.map(w => `<option value="${w}" ${w === 1 ? "selected" : ""}>${w} Kg</option>`).join("")}
+      </select>
+
+      <p class="mt-2 text-white font-semibold" style="text-shadow:0 1px 3px rgba(0,0,0,.45)">
+        Price: <span class="text-yellow-200 font-extrabold text-lg">₹<span id="${p.id}Total">${p.price}</span></span>
+      </p>
+
+      <button onclick="addToCart('${p.id}')" class="mt-3 bg-green-700 text-white px-4 py-2 rounded-lg w-full hover:bg-green-600 transition-colors shadow-md font-semibold">
+        Add to Cart
+      </button>
+    </div>
+  `).join("");
+}
+
+function updatePrice(id) {
+  const p = PRODUCTS.find(x => x.id === id);
+  const kg = parseFloat(document.getElementById(id + "Weight").value);
+  document.getElementById(id + "Total").innerText = +(p.price * kg).toFixed(2);
+}
+
+/* ---------- Cart ---------- */
+function addToCart(id) {
+  const p = PRODUCTS.find(x => x.id === id);
+  const qty = parseFloat(document.getElementById(id + "Weight").value);
+  const existing = cart.find(i => i.name === p.name);
+  if (existing) existing.qty = +(existing.qty + qty).toFixed(2);
+  else cart.push({ name: p.name, price: p.price, qty });
+  updateCartCount(); saveCart(); displayCart();
+  showMessage(`${qty} Kg ${p.name} added to cart!`, "success");
+}
+
+function updateCartCount() {
+  const total = cart.reduce((s, i) => s + i.qty, 0);
+  document.getElementById("cartCount").innerText = +total.toFixed(2);
+}
+
+function toggleCart() {
+  document.getElementById("cartBox").classList.toggle("open");
+  displayCart();
+}
+
+function displayCart() {
+  const list = document.getElementById("cartItems");
+  let total = 0;
+  if (cart.length === 0) {
+    list.innerHTML = "<li>Your cart is empty</li>";
+    document.getElementById("cartTotal").innerText = 0;
+    return;
+  }
+  list.innerHTML = cart.map((item, idx) => {
+    const t = +(item.price * item.qty).toFixed(2);
+    total += t;
+    return `<li class="flex justify-between items-center border-b pb-1">
+      <span>${idx + 1}. ${item.name} - ${item.qty} Kg = ₹${t}</span>
+      <button onclick="removeFromCart(${idx})" class="bg-red-500 text-white px-2 py-1 rounded ml-2 hover:bg-red-600 transition-colors">Delete</button>
+    </li>`;
+  }).join("");
+  document.getElementById("cartTotal").innerText = +total.toFixed(2);
+}
+
+function removeFromCart(i) {
+  cart.splice(i, 1);
+  updateCartCount(); displayCart(); saveCart();
+}
+
+/* ---------- WhatsApp checkout ---------- */
+function sendToWhatsApp() {
+  const name = document.getElementById("custName").value.trim();
+  const phone = document.getElementById("custPhone").value.trim();
+  const address = document.getElementById("custAddress").value.trim();
+
+  if (cart.length === 0) return showMessage("⚠️ Your cart is empty!", "error");
+  if (!name || !phone || !address) return showMessage("⚠️ Please fill all details before proceeding.", "error");
+  if (!/^\d{10}$/.test(phone)) return showMessage("⚠️ Please enter a valid 10-digit phone number.", "error");
+
+  const lines = [
+    "🛒 *New Order from Shiv Krishi Farm*", "",
+    `*Customer Name:* ${name}`,
+    `*Phone:* ${phone}`,
+    `*Address:* ${address}`, "",
+    "📦 *Order Items:*"
+  ];
+  let total = 0;
+  cart.forEach((item, i) => {
+    const t = +(item.price * item.qty).toFixed(2);
+    total += t;
+    lines.push(`${i + 1}. ${item.name} - ${item.qty} Kg = ₹${t}`);
+  });
+  lines.push("", `💰 *Total:* ₹${+total.toFixed(2)}`);
+
+  const url = `https://wa.me/918006417280?text=${encodeURIComponent(lines.join("\n"))}`;
+  window.open(url, "_blank");
+}
+
+/* ---------- Init ---------- */
+window.addEventListener("load", () => {
+  loadCart();
+  renderProducts();
+  displayCart();
+});
+</script>
+</body>
+</html>
